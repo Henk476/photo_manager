@@ -18,6 +18,8 @@ namespace CanutePhotoOrg
         string day;
         string project;
         BackgroundWorker worker;
+        bool isOutputPathManuallyEdited;
+        bool suppressOutputPathTextChanged;
         private const string IngestFilter = "Ingest Files (*.nef;*.cr2;*.cr3;*.arw;*.dng;*.raf;*.orf;*.rw2;*.pef;*.srw;*.mp4;*.mov;*.avi;*.mxf)|*.nef;*.cr2;*.cr3;*.arw;*.dng;*.raf;*.orf;*.rw2;*.pef;*.srw;*.mp4;*.mov;*.avi;*.mxf";
         private static readonly HashSet<string> RawExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
@@ -76,7 +78,49 @@ namespace CanutePhotoOrg
         public void createOutputPath()
         {
             outputPath = BuildOutputPath(project);
+            suppressOutputPathTextChanged = true;
             txtOutputPath.Text = outputPath;
+            suppressOutputPathTextChanged = false;
+            isOutputPathManuallyEdited = false;
+        }
+
+        private void SetManualOutputPath(string path)
+        {
+            outputPath = path;
+            suppressOutputPathTextChanged = true;
+            txtOutputPath.Text = path;
+            suppressOutputPathTextChanged = false;
+            isOutputPathManuallyEdited = true;
+        }
+
+        private bool TryValidateOutputPath(out string validatedPath)
+        {
+            validatedPath = string.Empty;
+            string candidate = txtOutputPath.Text.Trim();
+            if (string.IsNullOrWhiteSpace(candidate))
+            {
+                MessageBox.Show("Output path cannot be empty.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return false;
+            }
+
+            try
+            {
+                validatedPath = Path.GetFullPath(candidate);
+            }
+            catch
+            {
+                MessageBox.Show("Output path is invalid.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return false;
+            }
+
+            string root = Path.GetPathRoot(validatedPath);
+            if (string.IsNullOrWhiteSpace(root) || !Directory.Exists(root))
+            {
+                MessageBox.Show("Output drive or root folder is unavailable.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return false;
+            }
+
+            return true;
         }
 
         private string GetPreferredRemovableDrive()
@@ -257,6 +301,7 @@ namespace CanutePhotoOrg
         public frmMain()
         {
             InitializeComponent();
+            txtOutputPath.TextChanged += txtOutputPath_TextChanged;
 
             year = DateTime.Today.Year.ToString();
             DateTime m = DateTime.Now;
@@ -328,14 +373,19 @@ namespace CanutePhotoOrg
 
                 if (result == DialogResult.OK && !string.IsNullOrWhiteSpace(fbd.SelectedPath))
                 {
-                    outputPath = fbd.SelectedPath;
-                    outputPath = txtOutputPath.Text;
+                    SetManualOutputPath(fbd.SelectedPath);
                 }
             }
         }
 
         private void btnGo_Click(object sender, EventArgs e)
         {
+            if (!TryValidateOutputPath(out string validatedPath))
+            {
+                return;
+            }
+
+            outputPath = validatedPath;
             worker = new BackgroundWorker();
             worker.DoWork += Worker_DoWork;
             worker.RunWorkerAsync();            
@@ -365,7 +415,10 @@ namespace CanutePhotoOrg
         private void txtProject_Leave(object sender, EventArgs e)
         {
             project = txtProject.Text;
-            createOutputPath();
+            if (!isOutputPathManuallyEdited)
+            {
+                createOutputPath();
+            }
         }
 
         private void btnExit_Click(object sender, EventArgs e)
@@ -379,7 +432,10 @@ namespace CanutePhotoOrg
             {
                 if (settingsForm.ShowDialog(this) == DialogResult.OK)
                 {
-                    createOutputPath();
+                    if (!isOutputPathManuallyEdited)
+                    {
+                        createOutputPath();
+                    }
                 }
             }
         }
@@ -388,6 +444,15 @@ namespace CanutePhotoOrg
         {
             source = new HashSet<string>();
             txtSource.Text = String.Empty;
+        }
+
+        private void txtOutputPath_TextChanged(object sender, EventArgs e)
+        {
+            if (!suppressOutputPathTextChanged)
+            {
+                outputPath = txtOutputPath.Text;
+                isOutputPathManuallyEdited = true;
+            }
         }
     }
 }
