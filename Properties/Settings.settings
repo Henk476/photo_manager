@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<SettingsFile xmlns="http://schemas.microsoft.com/VisualStudio/2004/01/settings" CurrentProfile="(Default)">
+  <Profiles />
+  <Settings>
+    <Setting Name="DefaultInputDrive" Type="System.String" Scope="User">
+      <Value Profile="(Default)">G:\</Value>
+    </Setting>
+    <Setting Name="DefaultOutputRoot" Type="System.String" Scope="User">
+      <Value Profile="(Default)">G:\Work</Value>
+    </Setting>
+    <Setting Name="FolderTemplate" Type="System.String" Scope="User">
+      <Value Profile="(Default)">{YYYY}-{MM}-{DD} - {Project}</Value>
+    </Setting>
+  </Settings>
+</SettingsFile>
