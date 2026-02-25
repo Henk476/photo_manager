@@ -19,6 +19,18 @@ namespace CanutePhotoOrg
         string project;
         BackgroundWorker worker;
         private const string IngestFilter = "Ingest Files (*.nef;*.cr2;*.cr3;*.arw;*.dng;*.raf;*.orf;*.rw2;*.pef;*.srw;*.mp4;*.mov;*.avi;*.mxf)|*.nef;*.cr2;*.cr3;*.arw;*.dng;*.raf;*.orf;*.rw2;*.pef;*.srw;*.mp4;*.mov;*.avi;*.mxf";
+        private static readonly HashSet<string> RawExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ".nef", ".cr2", ".cr3", ".arw", ".dng", ".raf", ".orf", ".rw2", ".pef", ".srw"
+        };
+        private static readonly HashSet<string> VideoExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ".mp4", ".mov", ".avi", ".mxf"
+        };
+        private static readonly HashSet<string> ImageExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ".jpg", ".jpeg", ".png", ".tif", ".tiff"
+        };
 
         private string GetDefaultOutputRoot()
         {
@@ -177,35 +189,44 @@ namespace CanutePhotoOrg
         {
             try
             {
-                if (!Directory.Exists(outputPath))
-                {
-                    Directory.CreateDirectory(outputPath + "\\RAW");
-                    Directory.CreateDirectory(outputPath + "\\Edit");
-                    Directory.CreateDirectory(outputPath + "\\Select");
-                }
+                Directory.CreateDirectory(outputPath);
+                string rawFolder = Path.Combine(outputPath, "RAW");
+                Directory.CreateDirectory(rawFolder);
+                Directory.CreateDirectory(Path.Combine(outputPath, "Edit"));
+                Directory.CreateDirectory(Path.Combine(outputPath, "Select"));
 
                 foreach (string sourceFile in source)
                 {
-                    
-                    if (Path.GetExtension(sourceFile).ToUpper() == ".NEF")
+                    string extension = Path.GetExtension(sourceFile);
+                    if (string.IsNullOrWhiteSpace(extension))
                     {
-                        string fileName = Path.GetFileName(sourceFile);
-                        string destFile = Path.Combine(outputPath + "\\RAW", fileName);
-                        if (!File.Exists(destFile))
-                        {
-                            File.Copy(sourceFile, destFile, false);
-                        }                        
-                    }
-                    else if (sourceFile.Substring(sourceFile.LastIndexOf(".") + 1).ToUpper() == "JPG")
-                    {
-                        string fileName = Path.GetFileName(sourceFile);
-                        string destFile = Path.Combine(outputPath, fileName);
-                        if (!File.Exists(destFile))
-                        {
-                            File.Copy(sourceFile, destFile, false);
-                        }
+                        continue;
                     }
 
+                    string destinationFolder = null;
+                    if (RawExtensions.Contains(extension))
+                    {
+                        destinationFolder = rawFolder;
+                    }
+                    else if (VideoExtensions.Contains(extension))
+                    {
+                        destinationFolder = outputPath;
+                    }
+                    else if (ImageExtensions.Contains(extension))
+                    {
+                        continue;
+                    }
+                    else
+                    {
+                        continue;
+                    }
+
+                    string fileName = Path.GetFileName(sourceFile);
+                    string destFile = Path.Combine(destinationFolder, fileName);
+                    if (!File.Exists(destFile))
+                    {
+                        File.Copy(sourceFile, destFile, false);
+                    }
                 }
 
                 
