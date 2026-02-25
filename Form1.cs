@@ -33,6 +33,7 @@ namespace CanutePhotoOrg
         {
             ".jpg", ".jpeg", ".png", ".tif", ".tiff"
         };
+        private static readonly string[] RequiredOutputSubfolders = new[] { "RAW", "Edit", "Select" };
 
         private string GetDefaultOutputRoot()
         {
@@ -229,21 +230,43 @@ namespace CanutePhotoOrg
             Settings.Default.Save();
         }
 
+        private string EnsureOutputFolderStructure()
+        {
+            Directory.CreateDirectory(outputPath);
+
+            foreach (string subfolder in RequiredOutputSubfolders)
+            {
+                Directory.CreateDirectory(Path.Combine(outputPath, subfolder));
+            }
+
+            foreach (string subfolder in RequiredOutputSubfolders)
+            {
+                string folder = Path.Combine(outputPath, subfolder);
+                if (!Directory.Exists(folder))
+                {
+                    throw new IOException("Failed to prepare required output subfolder: " + folder);
+                }
+            }
+
+            return Path.Combine(outputPath, "RAW");
+        }
+
         public void CopyFiles()
         {
             try
             {
-                Directory.CreateDirectory(outputPath);
-                string rawFolder = Path.Combine(outputPath, "RAW");
-                Directory.CreateDirectory(rawFolder);
-                Directory.CreateDirectory(Path.Combine(outputPath, "Edit"));
-                Directory.CreateDirectory(Path.Combine(outputPath, "Select"));
+                string rawFolder = EnsureOutputFolderStructure();
+                int copiedCount = 0;
+                int skippedCount = 0;
+                int failedCount = 0;
+                List<string> failedFiles = new List<string>();
 
                 foreach (string sourceFile in source)
                 {
                     string extension = Path.GetExtension(sourceFile);
                     if (string.IsNullOrWhiteSpace(extension))
                     {
+                        skippedCount++;
                         continue;
                     }
 
@@ -258,32 +281,65 @@ namespace CanutePhotoOrg
                     }
                     else if (ImageExtensions.Contains(extension))
                     {
+                        skippedCount++;
                         continue;
                     }
                     else
                     {
+                        skippedCount++;
                         continue;
                     }
 
                     string fileName = Path.GetFileName(sourceFile);
                     string destFile = Path.Combine(destinationFolder, fileName);
-                    if (!File.Exists(destFile))
+                    if (File.Exists(destFile))
+                    {
+                        skippedCount++;
+                        continue;
+                    }
+
+                    try
                     {
                         File.Copy(sourceFile, destFile, false);
+                        copiedCount++;
+                    }
+                    catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException || ex is NotSupportedException)
+                    {
+                        failedCount++;
+                        failedFiles.Add(fileName + " - " + ex.Message);
                     }
                 }
 
-                
                 try
                 {
-                    //Environment.GetEnvironmentVariable("WINDIR") + @"\explorer.exe", pathToFolder
                     Process.Start(Environment.GetEnvironmentVariable("WINDIR") + @"\explorer.exe", outputPath);
                 }
                 catch (Win32Exception win32Exception)
                 {
-                    //The system cannot find the file specified...
                     MessageBox.Show(win32Exception.Message, "Error", MessageBoxButtons.OK);
                 }
+
+                StringBuilder summary = new StringBuilder();
+                summary.AppendLine("Copy complete.");
+                summary.AppendLine("Copied: " + copiedCount);
+                summary.AppendLine("Skipped: " + skippedCount);
+                summary.AppendLine("Failed: " + failedCount);
+
+                if (failedFiles.Count > 0)
+                {
+                    summary.AppendLine();
+                    summary.AppendLine("Failed files:");
+                    foreach (string failedFile in failedFiles)
+                    {
+                        summary.AppendLine(failedFile);
+                    }
+                }
+
+                MessageBox.Show(
+                    summary.ToString(),
+                    failedCount > 0 ? "Copy Completed with Errors" : "Copy Completed",
+                    MessageBoxButtons.OK,
+                    failedCount > 0 ? MessageBoxIcon.Warning : MessageBoxIcon.Information);
 
             }
             catch (IOException ioex)

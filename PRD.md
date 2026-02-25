@@ -11,7 +11,7 @@ After a shoot, photographers need a fast, repeatable way to move RAW and JPG fil
 
 ## Goals
 - Reduce time to organize files for a new project.
-- Enforce a consistent folder structure (`RAW`, `Edit`, `LRC`).
+- Enforce a consistent folder structure (`RAW`, `Edit`, `Select`).
 - Allow the user to select a project name and set an output path.
 - Avoid overwriting existing files.
 
