@@ -18,6 +18,7 @@ namespace CanutePhotoOrg
         string day;
         string project;
         BackgroundWorker worker;
+        private const string IngestFilter = "Ingest Files (*.nef;*.cr2;*.cr3;*.arw;*.dng;*.raf;*.orf;*.rw2;*.pef;*.srw;*.mp4;*.mov;*.avi;*.mxf)|*.nef;*.cr2;*.cr3;*.arw;*.dng;*.raf;*.orf;*.rw2;*.pef;*.srw;*.mp4;*.mov;*.avi;*.mxf";
 
         private string GetDefaultOutputRoot()
         {
@@ -64,6 +65,112 @@ namespace CanutePhotoOrg
         {
             outputPath = BuildOutputPath(project);
             txtOutputPath.Text = outputPath;
+        }
+
+        private string GetPreferredRemovableDrive()
+        {
+            DriveInfo[] drives;
+            try
+            {
+                drives = DriveInfo.GetDrives();
+            }
+            catch
+            {
+                return string.Empty;
+            }
+
+            var removableRoots = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (DriveInfo drive in drives)
+            {
+                if (drive.DriveType == DriveType.Removable && drive.IsReady)
+                {
+                    removableRoots.Add(drive.RootDirectory.FullName);
+                }
+            }
+
+            if (removableRoots.Count == 0)
+            {
+                return string.Empty;
+            }
+
+            string lastUsedRemovable = Settings.Default.LastUsedRemovableDrive;
+            if (!string.IsNullOrWhiteSpace(lastUsedRemovable))
+            {
+                string normalizedLastUsed = Path.GetPathRoot(lastUsedRemovable) ?? lastUsedRemovable;
+                if (removableRoots.Contains(normalizedLastUsed))
+                {
+                    return normalizedLastUsed;
+                }
+            }
+
+            string preferred = string.Empty;
+            foreach (string root in removableRoots)
+            {
+                if (string.IsNullOrEmpty(preferred) || string.Compare(root, preferred, StringComparison.OrdinalIgnoreCase) < 0)
+                {
+                    preferred = root;
+                }
+            }
+
+            return preferred;
+        }
+
+        private string ResolveInitialSourceDirectory()
+        {
+            string preferredRemovable = GetPreferredRemovableDrive();
+            if (!string.IsNullOrWhiteSpace(preferredRemovable) && Directory.Exists(preferredRemovable))
+            {
+                return preferredRemovable;
+            }
+
+            string defaultInput = Settings.Default.DefaultInputDrive;
+            if (!string.IsNullOrWhiteSpace(defaultInput) && Directory.Exists(defaultInput))
+            {
+                return defaultInput;
+            }
+
+            string lastUsedFolder = Settings.Default.LastUsedSourceFolder;
+            if (!string.IsNullOrWhiteSpace(lastUsedFolder) && Directory.Exists(lastUsedFolder))
+            {
+                return lastUsedFolder;
+            }
+
+            return Environment.GetFolderPath(Environment.SpecialFolder.MyPictures);
+        }
+
+        private void SaveLastUsedSourceContext(string selectedFilePath)
+        {
+            if (string.IsNullOrWhiteSpace(selectedFilePath))
+            {
+                return;
+            }
+
+            string selectedFolder = Path.GetDirectoryName(selectedFilePath);
+            if (string.IsNullOrWhiteSpace(selectedFolder))
+            {
+                return;
+            }
+
+            Settings.Default.LastUsedSourceFolder = selectedFolder;
+
+            string root = Path.GetPathRoot(selectedFolder);
+            if (!string.IsNullOrWhiteSpace(root))
+            {
+                try
+                {
+                    DriveInfo drive = new DriveInfo(root);
+                    if (drive.DriveType == DriveType.Removable && drive.IsReady)
+                    {
+                        Settings.Default.LastUsedRemovableDrive = drive.RootDirectory.FullName;
+                    }
+                }
+                catch
+                {
+                    // Ignore invalid drive metadata for source persistence.
+                }
+            }
+
+            Settings.Default.Save();
         }
 
         public void CopyFiles()
@@ -154,17 +261,9 @@ namespace CanutePhotoOrg
             System.IO.Stream myStream;
             OpenFileDialog thisDialog = new OpenFileDialog();
 
-            string defaultInput = Settings.Default.DefaultInputDrive;
-            if (!string.IsNullOrWhiteSpace(defaultInput) && Directory.Exists(defaultInput))
-            {
-                thisDialog.InitialDirectory = defaultInput;
-            }
-            else
-            {
-                thisDialog.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyPictures);
-            }
-            thisDialog.Filter = "Media Files (*.png;*.jpg;*.jpeg;*.tif;*.tiff;*.nef;*.cr2;*.cr3;*.arw;*.dng;*.raf;*.orf;*.rw2;*.pef;*.srw;*.mp4;*.mov;*.avi;*.mxf)|*.png;*.jpg;*.jpeg;*.tif;*.tiff;*.nef;*.cr2;*.cr3;*.arw;*.dng;*.raf;*.orf;*.rw2;*.pef;*.srw;*.mp4;*.mov;*.avi;*.mxf";
-            thisDialog.FilterIndex = 2;
+            thisDialog.InitialDirectory = ResolveInitialSourceDirectory();
+            thisDialog.Filter = IngestFilter;
+            thisDialog.FilterIndex = 1;
             thisDialog.RestoreDirectory = true;
             thisDialog.Multiselect = true;
             thisDialog.Title = "Select Project Files";
@@ -196,6 +295,7 @@ namespace CanutePhotoOrg
 
                 txtSource.Text = sb.ToString();
                 lblCount.Text = "Files: " + source.Count.ToString();
+                SaveLastUsedSourceContext(thisDialog.FileName);
             }
         }
 

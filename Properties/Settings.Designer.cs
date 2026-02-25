@@ -58,5 +58,29 @@ namespace CanutePhotoOrg.Properties {
                 this["FolderTemplate"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string LastUsedSourceFolder {
+            get {
+                return ((string)(this["LastUsedSourceFolder"]));
+            }
+            set {
+                this["LastUsedSourceFolder"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string LastUsedRemovableDrive {
+            get {
+                return ((string)(this["LastUsedRemovableDrive"]));
+            }
+            set {
+                this["LastUsedRemovableDrive"] = value;
+            }
+        }
     }
 }
