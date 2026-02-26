@@ -500,6 +500,7 @@ namespace CanutePhotoOrg
         {
             InitializeComponent();
             txtOutputPath.TextChanged += txtOutputPath_TextChanged;
+            ThemeManager.ApplyTheme(this);
 
             year = DateTime.Today.Year.ToString();
             DateTime m = DateTime.Now;
@@ -708,6 +709,8 @@ namespace CanutePhotoOrg
                     {
                         createOutputPath();
                     }
+
+                    ThemeManager.ApplyTheme(this);
                 }
             }
         }

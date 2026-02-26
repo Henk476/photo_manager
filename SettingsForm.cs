@@ -11,14 +11,21 @@ namespace CanutePhotoOrg
         {
             InitializeComponent();
             LoadSettings();
+            ThemeManager.ApplyTheme(this);
         }
 
         private void LoadSettings()
         {
+            cmbThemePreference.Items.Clear();
+            cmbThemePreference.Items.Add("System");
+            cmbThemePreference.Items.Add("Light");
+            cmbThemePreference.Items.Add("Dark");
+
             txtDefaultInputDrive.Text = Settings.Default.DefaultInputDrive;
             txtDefaultOutputRoot.Text = Settings.Default.DefaultOutputRoot;
             txtFolderTemplate.Text = Settings.Default.FolderTemplate;
             txtMaxParallelWorkers.Text = Settings.Default.MaxParallelCopyWorkers.ToString();
+            cmbThemePreference.SelectedItem = ThemeManager.NormalizeThemePreference(Settings.Default.ThemePreference);
         }
 
         private void btnBrowseOutputRoot_Click(object sender, EventArgs e)
@@ -39,6 +46,7 @@ namespace CanutePhotoOrg
             string outputRoot = txtDefaultOutputRoot.Text.Trim();
             string template = txtFolderTemplate.Text.Trim();
             string maxWorkersText = txtMaxParallelWorkers.Text.Trim();
+            string themePreference = cmbThemePreference.SelectedItem?.ToString() ?? "System";
 
             if (string.IsNullOrWhiteSpace(outputRoot))
             {
@@ -76,6 +84,7 @@ namespace CanutePhotoOrg
             Settings.Default.DefaultOutputRoot = outputRoot;
             Settings.Default.FolderTemplate = template;
             Settings.Default.MaxParallelCopyWorkers = maxWorkers;
+            Settings.Default.ThemePreference = ThemeManager.NormalizeThemePreference(themePreference);
             Settings.Default.Save();
 
             DialogResult = DialogResult.OK;

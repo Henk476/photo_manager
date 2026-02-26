@@ -94,5 +94,17 @@ namespace CanutePhotoOrg.Properties {
                 this["MaxParallelCopyWorkers"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("System")]
+        public string ThemePreference {
+            get {
+                return ((string)(this["ThemePreference"]));
+            }
+            set {
+                this["ThemePreference"] = value;
+            }
+        }
     }
 }

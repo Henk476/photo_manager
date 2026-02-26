@@ -37,6 +37,8 @@ namespace CanutePhotoOrg
             this.txtFolderTemplate = new System.Windows.Forms.TextBox();
             this.label4 = new System.Windows.Forms.Label();
             this.txtMaxParallelWorkers = new System.Windows.Forms.TextBox();
+            this.label5 = new System.Windows.Forms.Label();
+            this.cmbThemePreference = new CanutePhotoOrg.ThemedComboBox();
             this.btnSave = new System.Windows.Forms.Button();
             this.btnCancel = new System.Windows.Forms.Button();
             this.SuspendLayout();
@@ -115,22 +117,40 @@ namespace CanutePhotoOrg
             this.txtMaxParallelWorkers.Size = new System.Drawing.Size(88, 39);
             this.txtMaxParallelWorkers.TabIndex = 8;
             // 
+            // label5
+            // 
+            this.label5.AutoSize = true;
+            this.label5.Location = new System.Drawing.Point(27, 281);
+            this.label5.Name = "label5";
+            this.label5.Size = new System.Drawing.Size(90, 32);
+            this.label5.TabIndex = 9;
+            this.label5.Text = "Theme:";
+            // 
+            // cmbThemePreference
+            // 
+            this.cmbThemePreference.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cmbThemePreference.FormattingEnabled = true;
+            this.cmbThemePreference.Location = new System.Drawing.Point(215, 278);
+            this.cmbThemePreference.Name = "cmbThemePreference";
+            this.cmbThemePreference.Size = new System.Drawing.Size(171, 40);
+            this.cmbThemePreference.TabIndex = 10;
+            // 
             // btnSave
             // 
-            this.btnSave.Location = new System.Drawing.Point(447, 282);
+            this.btnSave.Location = new System.Drawing.Point(447, 337);
             this.btnSave.Name = "btnSave";
             this.btnSave.Size = new System.Drawing.Size(100, 45);
-            this.btnSave.TabIndex = 9;
+            this.btnSave.TabIndex = 11;
             this.btnSave.Text = "Save";
             this.btnSave.UseVisualStyleBackColor = true;
             this.btnSave.Click += new System.EventHandler(this.btnSave_Click);
             // 
             // btnCancel
             // 
-            this.btnCancel.Location = new System.Drawing.Point(553, 282);
+            this.btnCancel.Location = new System.Drawing.Point(553, 337);
             this.btnCancel.Name = "btnCancel";
             this.btnCancel.Size = new System.Drawing.Size(100, 45);
-            this.btnCancel.TabIndex = 10;
+            this.btnCancel.TabIndex = 12;
             this.btnCancel.Text = "Cancel";
             this.btnCancel.UseVisualStyleBackColor = true;
             this.btnCancel.Click += new System.EventHandler(this.btnCancel_Click);
@@ -140,7 +160,9 @@ namespace CanutePhotoOrg
             this.AcceptButton = this.btnSave;
             this.AutoScaleDimensions = new System.Drawing.SizeF(10F, 24F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(690, 351);
+            this.ClientSize = new System.Drawing.Size(690, 404);
+            this.Controls.Add(this.cmbThemePreference);
+            this.Controls.Add(this.label5);
             this.Controls.Add(this.txtMaxParallelWorkers);
             this.Controls.Add(this.label4);
             this.Controls.Add(this.btnCancel);
@@ -174,6 +196,8 @@ namespace CanutePhotoOrg
         private System.Windows.Forms.TextBox txtFolderTemplate;
         private System.Windows.Forms.Label label4;
         private System.Windows.Forms.TextBox txtMaxParallelWorkers;
+        private System.Windows.Forms.Label label5;
+        private ThemedComboBox cmbThemePreference;
         private System.Windows.Forms.Button btnSave;
         private System.Windows.Forms.Button btnCancel;
     }
