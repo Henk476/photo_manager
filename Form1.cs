@@ -49,6 +49,29 @@ namespace CanutePhotoOrg
             public IReadOnlyList<string> SourceFiles { get; }
         }
 
+        private sealed class CopyProgressState
+        {
+            public int TotalFiles { get; set; }
+            public int ProcessedFiles { get; set; }
+            public int CopiedFiles { get; set; }
+            public int SkippedFiles { get; set; }
+            public int FailedFiles { get; set; }
+            public string CurrentFileName { get; set; }
+            public TimeSpan Elapsed { get; set; }
+            public TimeSpan? EstimatedRemaining { get; set; }
+        }
+
+        private sealed class CopyResult
+        {
+            public string OutputPath { get; set; }
+            public int TotalFiles { get; set; }
+            public int CopiedCount { get; set; }
+            public int SkippedCount { get; set; }
+            public int FailedCount { get; set; }
+            public List<string> FailedFiles { get; set; }
+            public TimeSpan Elapsed { get; set; }
+        }
+
         private string GetDefaultOutputRoot()
         {
             string root = Settings.Default.DefaultOutputRoot;
@@ -265,106 +288,170 @@ namespace CanutePhotoOrg
             return Path.Combine(targetOutputPath, "RAW");
         }
 
-        public void CopyFiles(IReadOnlyCollection<string> sourceFiles, string targetOutputPath)
+        private static string FormatDuration(TimeSpan value)
         {
-            try
+            return value.ToString(@"hh\:mm\:ss");
+        }
+
+        private static string BuildProgressText(CopyProgressState state)
+        {
+            int percent = state.TotalFiles <= 0
+                ? 0
+                : (int)Math.Round((double)state.ProcessedFiles * 100 / state.TotalFiles);
+            return "Progress: " + state.ProcessedFiles + "/" + state.TotalFiles + " (" + percent + "%) | Copied: " + state.CopiedFiles + " | Skipped: " + state.SkippedFiles + " | Failed: " + state.FailedFiles;
+        }
+
+        private static string BuildTimingText(CopyProgressState state)
+        {
+            string etaText = state.EstimatedRemaining.HasValue ? FormatDuration(state.EstimatedRemaining.Value) : "--:--:--";
+            return "Elapsed: " + FormatDuration(state.Elapsed) + " | ETA: " + etaText;
+        }
+
+        private static string BuildSummaryText(CopyResult result)
+        {
+            var summary = new StringBuilder();
+            summary.AppendLine("Copy complete.");
+            summary.AppendLine("Total: " + result.TotalFiles);
+            summary.AppendLine("Copied: " + result.CopiedCount);
+            summary.AppendLine("Skipped: " + result.SkippedCount);
+            summary.AppendLine("Failed: " + result.FailedCount);
+            summary.AppendLine("Elapsed: " + FormatDuration(result.Elapsed));
+
+            if (result.Elapsed.TotalSeconds > 0)
             {
-                string rawFolder = EnsureOutputFolderStructure(targetOutputPath);
-                int copiedCount = 0;
-                int skippedCount = 0;
-                int failedCount = 0;
-                List<string> failedFiles = new List<string>();
+                double filesPerSecond = result.TotalFiles / result.Elapsed.TotalSeconds;
+                summary.AppendLine("Throughput: " + filesPerSecond.ToString("0.00") + " files/sec");
+            }
 
-                foreach (string sourceFile in sourceFiles)
+            if (result.FailedFiles.Count > 0)
+            {
+                summary.AppendLine();
+                summary.AppendLine("Failed files:");
+                foreach (string failedFile in result.FailedFiles)
                 {
-                    string extension = Path.GetExtension(sourceFile);
-                    if (string.IsNullOrWhiteSpace(extension))
-                    {
-                        skippedCount++;
-                        continue;
-                    }
+                    summary.AppendLine(failedFile);
+                }
+            }
 
-                    string destinationFolder = null;
-                    if (RawExtensions.Contains(extension))
-                    {
-                        destinationFolder = rawFolder;
-                    }
-                    else if (VideoExtensions.Contains(extension))
-                    {
-                        destinationFolder = targetOutputPath;
-                    }
-                    else if (ImageExtensions.Contains(extension))
-                    {
-                        skippedCount++;
-                        continue;
-                    }
-                    else
-                    {
-                        skippedCount++;
-                        continue;
-                    }
+            return summary.ToString();
+        }
 
-                    string fileName = Path.GetFileName(sourceFile);
-                    string destFile = Path.Combine(destinationFolder, fileName);
-                    if (File.Exists(destFile))
-                    {
-                        skippedCount++;
-                        continue;
-                    }
+        private CopyResult CopyFiles(IReadOnlyCollection<string> sourceFiles, string targetOutputPath, Action<CopyProgressState> reportProgress)
+        {
+            string rawFolder = EnsureOutputFolderStructure(targetOutputPath);
+            int copiedCount = 0;
+            int skippedCount = 0;
+            int failedCount = 0;
+            int processedCount = 0;
+            int totalFiles = sourceFiles.Count;
+            List<string> failedFiles = new List<string>();
+            var stopwatch = Stopwatch.StartNew();
 
-                    try
-                    {
-                        File.Copy(sourceFile, destFile, false);
-                        copiedCount++;
-                    }
-                    catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException || ex is NotSupportedException)
-                    {
-                        failedCount++;
-                        failedFiles.Add(fileName + " - " + ex.Message);
-                    }
+            reportProgress?.Invoke(new CopyProgressState
+            {
+                TotalFiles = totalFiles,
+                ProcessedFiles = 0,
+                CopiedFiles = 0,
+                SkippedFiles = 0,
+                FailedFiles = 0,
+                CurrentFileName = string.Empty,
+                Elapsed = TimeSpan.Zero,
+                EstimatedRemaining = null
+            });
+
+            foreach (string sourceFile in sourceFiles)
+            {
+                string fileName = Path.GetFileName(sourceFile);
+                string extension = Path.GetExtension(sourceFile);
+
+                if (string.IsNullOrWhiteSpace(extension))
+                {
+                    skippedCount++;
+                    processedCount++;
+                    ReportProgressSnapshot(fileName);
+                    continue;
+                }
+
+                string destinationFolder = null;
+                if (RawExtensions.Contains(extension))
+                {
+                    destinationFolder = rawFolder;
+                }
+                else if (VideoExtensions.Contains(extension))
+                {
+                    destinationFolder = targetOutputPath;
+                }
+                else if (ImageExtensions.Contains(extension))
+                {
+                    skippedCount++;
+                    processedCount++;
+                    ReportProgressSnapshot(fileName);
+                    continue;
+                }
+                else
+                {
+                    skippedCount++;
+                    processedCount++;
+                    ReportProgressSnapshot(fileName);
+                    continue;
+                }
+
+                string destFile = Path.Combine(destinationFolder, fileName);
+                if (File.Exists(destFile))
+                {
+                    skippedCount++;
+                    processedCount++;
+                    ReportProgressSnapshot(fileName);
+                    continue;
                 }
 
                 try
                 {
-                    Process.Start(Environment.GetEnvironmentVariable("WINDIR") + @"\explorer.exe", targetOutputPath);
+                    File.Copy(sourceFile, destFile, false);
+                    copiedCount++;
                 }
-                catch (Win32Exception win32Exception)
+                catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException || ex is NotSupportedException)
                 {
-                    MessageBox.Show(win32Exception.Message, "Error", MessageBoxButtons.OK);
+                    failedCount++;
+                    failedFiles.Add(fileName + " - " + ex.Message);
                 }
 
-                StringBuilder summary = new StringBuilder();
-                summary.AppendLine("Copy complete.");
-                summary.AppendLine("Copied: " + copiedCount);
-                summary.AppendLine("Skipped: " + skippedCount);
-                summary.AppendLine("Failed: " + failedCount);
+                processedCount++;
+                ReportProgressSnapshot(fileName);
+            }
 
-                if (failedFiles.Count > 0)
+            stopwatch.Stop();
+            return new CopyResult
+            {
+                OutputPath = targetOutputPath,
+                TotalFiles = totalFiles,
+                CopiedCount = copiedCount,
+                SkippedCount = skippedCount,
+                FailedCount = failedCount,
+                FailedFiles = failedFiles,
+                Elapsed = stopwatch.Elapsed
+            };
+
+            void ReportProgressSnapshot(string currentFileName)
+            {
+                double avgTicksPerFile = processedCount > 0 ? (double)stopwatch.ElapsedTicks / processedCount : 0;
+                int remainingFiles = Math.Max(0, totalFiles - processedCount);
+                TimeSpan? eta = processedCount >= 3
+                    ? TimeSpan.FromTicks((long)(avgTicksPerFile * remainingFiles))
+                    : (TimeSpan?)null;
+
+                reportProgress?.Invoke(new CopyProgressState
                 {
-                    summary.AppendLine();
-                    summary.AppendLine("Failed files:");
-                    foreach (string failedFile in failedFiles)
-                    {
-                        summary.AppendLine(failedFile);
-                    }
-                }
-
-                MessageBox.Show(
-                    summary.ToString(),
-                    failedCount > 0 ? "Copy Completed with Errors" : "Copy Completed",
-                    MessageBoxButtons.OK,
-                    failedCount > 0 ? MessageBoxIcon.Warning : MessageBoxIcon.Information);
-
+                    TotalFiles = totalFiles,
+                    ProcessedFiles = processedCount,
+                    CopiedFiles = copiedCount,
+                    SkippedFiles = skippedCount,
+                    FailedFiles = failedCount,
+                    CurrentFileName = currentFileName,
+                    Elapsed = stopwatch.Elapsed,
+                    EstimatedRemaining = eta
+                });
             }
-            catch (IOException ioex)
-            {
-                MessageBox.Show(ioex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(ex.Message, "Error", MessageBoxButtons.OK);
-            }
-            
         }
 
 
@@ -471,8 +558,15 @@ namespace CanutePhotoOrg
 
             isCopyInProgress = true;
             btnGo.Enabled = false;
+            progressCopy.Value = 0;
+            progressCopy.Maximum = request.SourceFiles.Count <= 0 ? 1 : request.SourceFiles.Count;
+            lblCurrentFile.Text = "Current: Starting...";
+            lblProgress.Text = "Progress: 0/" + request.SourceFiles.Count + " (0%) | Copied: 0 | Skipped: 0 | Failed: 0";
+            lblTiming.Text = "Elapsed: 00:00:00 | ETA: --:--:--";
             worker = new BackgroundWorker();
+            worker.WorkerReportsProgress = true;
             worker.DoWork += Worker_DoWork;
+            worker.ProgressChanged += Worker_ProgressChanged;
             worker.RunWorkerCompleted += Worker_RunWorkerCompleted;
             worker.RunWorkerAsync(request);            
             
@@ -480,22 +574,18 @@ namespace CanutePhotoOrg
 
         private void Worker_DoWork(object sender, DoWorkEventArgs e)
         {
-            
-            try
+            var request = e.Argument as CopyRequest;
+            if (request != null && !string.IsNullOrWhiteSpace(request.OutputPath))
             {
-                var request = e.Argument as CopyRequest;
-                if (request != null && !string.IsNullOrWhiteSpace(request.OutputPath))
+                var backgroundWorker = sender as BackgroundWorker;
+                var result = CopyFiles(request.SourceFiles, request.OutputPath, progressState =>
                 {
-                    CopyFiles(request.SourceFiles, request.OutputPath);
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(ex.Message, "Error", MessageBoxButtons.OK);
-            }
-            finally
-            {
-                
+                    if (backgroundWorker != null)
+                    {
+                        backgroundWorker.ReportProgress(0, progressState);
+                    }
+                });
+                e.Result = result;
             }
         }
 
@@ -503,6 +593,54 @@ namespace CanutePhotoOrg
         {
             isCopyInProgress = false;
             btnGo.Enabled = true;
+            lblCurrentFile.Text = "Current: Idle";
+
+            if (e.Error != null)
+            {
+                MessageBox.Show(e.Error.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            var result = e.Result as CopyResult;
+            if (result == null)
+            {
+                return;
+            }
+
+            lblTiming.Text = "Elapsed: " + FormatDuration(result.Elapsed) + " | ETA: 00:00:00";
+
+            try
+            {
+                Process.Start(Environment.GetEnvironmentVariable("WINDIR") + @"\explorer.exe", result.OutputPath);
+            }
+            catch (Win32Exception win32Exception)
+            {
+                MessageBox.Show(win32Exception.Message, "Error", MessageBoxButtons.OK);
+            }
+
+            MessageBox.Show(
+                BuildSummaryText(result),
+                result.FailedCount > 0 ? "Copy Completed with Errors" : "Copy Completed",
+                MessageBoxButtons.OK,
+                result.FailedCount > 0 ? MessageBoxIcon.Warning : MessageBoxIcon.Information);
+        }
+
+        private void Worker_ProgressChanged(object sender, ProgressChangedEventArgs e)
+        {
+            var state = e.UserState as CopyProgressState;
+            if (state == null)
+            {
+                return;
+            }
+
+            int safeTotal = state.TotalFiles <= 0 ? 1 : state.TotalFiles;
+            progressCopy.Maximum = safeTotal;
+            progressCopy.Value = Math.Max(0, Math.Min(state.ProcessedFiles, safeTotal));
+            lblProgress.Text = BuildProgressText(state);
+            lblTiming.Text = BuildTimingText(state);
+            lblCurrentFile.Text = string.IsNullOrWhiteSpace(state.CurrentFileName)
+                ? "Current: Waiting..."
+                : "Current: " + state.CurrentFileName;
         }
 
         private void txtProject_Leave(object sender, EventArgs e)
@@ -537,6 +675,12 @@ namespace CanutePhotoOrg
         {
             source = new HashSet<string>();
             txtSource.Text = String.Empty;
+            lblCount.Text = "Files: 0";
+            progressCopy.Value = 0;
+            progressCopy.Maximum = 1;
+            lblProgress.Text = "Progress: 0/0 (0%) | Copied: 0 | Skipped: 0 | Failed: 0";
+            lblTiming.Text = "Elapsed: 00:00:00 | ETA: --:--:--";
+            lblCurrentFile.Text = "Current: Idle";
         }
 
         private void txtOutputPath_TextChanged(object sender, EventArgs e)

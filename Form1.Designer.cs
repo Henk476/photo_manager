@@ -43,6 +43,10 @@ namespace CanutePhotoOrg
             this.btnExit = new System.Windows.Forms.Button();
             this.btnClear = new System.Windows.Forms.Button();
             this.lblCount = new System.Windows.Forms.Label();
+            this.progressCopy = new System.Windows.Forms.ProgressBar();
+            this.lblProgress = new System.Windows.Forms.Label();
+            this.lblCurrentFile = new System.Windows.Forms.Label();
+            this.lblTiming = new System.Windows.Forms.Label();
             this.SuspendLayout();
             // 
             // label1
@@ -180,6 +184,40 @@ namespace CanutePhotoOrg
             this.lblCount.TabIndex = 10;
             this.lblCount.Text = "Files: 0";
             // 
+            // progressCopy
+            // 
+            this.progressCopy.Location = new System.Drawing.Point(183, 892);
+            this.progressCopy.Name = "progressCopy";
+            this.progressCopy.Size = new System.Drawing.Size(601, 36);
+            this.progressCopy.TabIndex = 11;
+            // 
+            // lblProgress
+            // 
+            this.lblProgress.AutoSize = true;
+            this.lblProgress.Location = new System.Drawing.Point(29, 888);
+            this.lblProgress.Name = "lblProgress";
+            this.lblProgress.Size = new System.Drawing.Size(386, 48);
+            this.lblProgress.TabIndex = 12;
+            this.lblProgress.Text = "Progress: 0/0 (0%) | Copied: 0 | Skipped: 0 | Failed: 0";
+            // 
+            // lblCurrentFile
+            // 
+            this.lblCurrentFile.AutoEllipsis = true;
+            this.lblCurrentFile.Location = new System.Drawing.Point(29, 832);
+            this.lblCurrentFile.Name = "lblCurrentFile";
+            this.lblCurrentFile.Size = new System.Drawing.Size(863, 48);
+            this.lblCurrentFile.TabIndex = 13;
+            this.lblCurrentFile.Text = "Current: Idle";
+            // 
+            // lblTiming
+            // 
+            this.lblTiming.AutoSize = true;
+            this.lblTiming.Location = new System.Drawing.Point(29, 1115);
+            this.lblTiming.Name = "lblTiming";
+            this.lblTiming.Size = new System.Drawing.Size(392, 48);
+            this.lblTiming.TabIndex = 14;
+            this.lblTiming.Text = "Elapsed: 00:00:00 | ETA: --:--:--";
+            // 
             // frmMain
             // 
             this.AcceptButton = this.btnGo;
@@ -187,6 +225,10 @@ namespace CanutePhotoOrg
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(224)))), ((int)(((byte)(224)))), ((int)(((byte)(224)))));
             this.ClientSize = new System.Drawing.Size(923, 1174);
+            this.Controls.Add(this.lblTiming);
+            this.Controls.Add(this.lblCurrentFile);
+            this.Controls.Add(this.lblProgress);
+            this.Controls.Add(this.progressCopy);
             this.Controls.Add(this.lblCount);
             this.Controls.Add(this.btnClear);
             this.Controls.Add(this.btnExit);
@@ -226,6 +268,10 @@ namespace CanutePhotoOrg
         private System.Windows.Forms.Button btnExit;
         private System.Windows.Forms.Button btnClear;
         private System.Windows.Forms.Label lblCount;
+        private System.Windows.Forms.ProgressBar progressCopy;
+        private System.Windows.Forms.Label lblProgress;
+        private System.Windows.Forms.Label lblCurrentFile;
+        private System.Windows.Forms.Label lblTiming;
     }
 }
 
