@@ -86,3 +86,51 @@
 1. Acceptance Criteria:
 1. Output folder creation and verification use `RAW`, `Edit`, and `LRC`.
 1. References to `Select` as an output subfolder are removed from active specs and task docs.
+
+## Epic 6: Copy Performance & Throughput
+1. Story: Establish baseline and performance targets.
+1. Acceptance Criteria:
+1. A repeatable benchmark scenario is defined (small, medium, large copy sets with mixed RAW/video files).
+1. Baseline copy throughput and total duration are measured on current implementation.
+1. A target improvement is documented (for example, at least 2x faster on medium/large sets where IO allows).
+
+1. Story: Research and compare optimization strategies.
+1. Acceptance Criteria:
+1. At least three approaches are compared with notes on tradeoffs: bounded multi-threading, async/stream tuning, and file-system preflight optimizations.
+1. A recommended default strategy is selected with a fallback strategy for slower/removable media.
+1. The chosen strategy includes guardrails for reliability (no overwrite, consistent error handling, stable summary results).
+
+1. Story: Implement bounded parallel copy pipeline.
+1. Acceptance Criteria:
+1. Copy execution supports configurable max parallelism (default safe value, e.g. 2-4 workers).
+1. Throughput improves versus baseline for medium/large sets without breaking existing copy rules.
+1. UI remains responsive and prevents duplicate runs while processing.
+
+1. Story: Add observability and verification for performance.
+1. Acceptance Criteria:
+1. Copy summary includes elapsed time and effective throughput (files/sec or MB/sec).
+1. Regression checks validate functional correctness (routing, skip-on-existing, error reporting) under parallel execution.
+1. Benchmark rerun after implementation demonstrates improvement against baseline.
+
+## Epic 7: Copy Progress Visibility
+1. Story: Show real-time copy progress.
+1. Acceptance Criteria:
+1. The UI shows progress during copy as both percentage and counts (processed/total).
+1. Progress updates occur continuously without freezing the UI.
+1. Progress accurately reflects copied, skipped, and failed outcomes.
+
+1. Story: Surface current file activity.
+1. Acceptance Criteria:
+1. The UI shows the currently processing filename (or short path) while copy is running.
+1. On completion, current-file indicator clears and final status is shown.
+
+1. Story: Improve long-run user feedback.
+1. Acceptance Criteria:
+1. The UI displays elapsed time and estimated remaining time when enough samples exist.
+1. Status messaging remains clear for large batches and removable media.
+
+1. Story: Preserve correctness and stability with progress reporting.
+1. Acceptance Criteria:
+1. Existing copy rules (routing, skip-on-existing, no-overwrite, error capture) are unchanged.
+1. Progress reporting remains correct under sequential and parallel copy modes.
+1. Automated checks verify progress events and final totals are consistent.
