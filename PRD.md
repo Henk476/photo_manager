@@ -11,7 +11,7 @@ After a shoot, photographers need a fast, repeatable way to move RAW and JPG fil
 
 ## Goals
 - Reduce time to organize files for a new project.
-- Enforce a consistent folder structure (`RAW`, `Edit`, `Select`).
+- Enforce a consistent folder structure (`RAW`, `Edit`, `LRC`).
 - Allow the user to select a project name and set an output path.
 - Avoid overwriting existing files.
 
@@ -55,7 +55,7 @@ After a shoot, photographers need a fast, repeatable way to move RAW and JPG fil
    - Provide a configuration option for folder template (e.g., `{YYYY}-{MM}-{DD} - {Project}`).
 5. Copy behavior:
    - Create output folder structure if missing:
-     - `RAW`, `Edit`, `Select`.
+     - `RAW`, `Edit`, `LRC`.
    - Copy RAW formats (`.nef`, `.cr2`, `.cr3`, `.arw`, `.dng`, `.raf`, `.orf`, `.rw2`, `.pef`, `.srw`) to `RAW`.
    - Copy video formats (`.mp4`, `.mov`, `.avi`, `.mxf`) to root of output path.
    - Ignore image formats (`.jpg`, `.jpeg`, `.png`, `.tif`, `.tiff`) during copy.

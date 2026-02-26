@@ -6,3 +6,10 @@
 1. Story: Clear per-file error feedback.
 1. Task: Capture per-file copy failures with filename and error reason.
 1. Task: Provide summary counts for copied, skipped, and failed files.
+
+1. Story: Copy execution stability.
+1. Task: Prevent collection-modified exceptions by snapshotting selected files before background copy starts.
+1. Task: Prevent concurrent Generate runs by guarding against duplicate background worker execution.
+
+1. Story: Output subfolder naming alignment.
+1. Task: Ensure output subfolder naming is consistently `LRC` across copy logic, folder creation checks, and documentation.

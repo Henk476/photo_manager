@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Windows.Forms;
 using CanutePhotoOrg.Properties;
@@ -20,6 +21,7 @@ namespace CanutePhotoOrg
         BackgroundWorker worker;
         bool isOutputPathManuallyEdited;
         bool suppressOutputPathTextChanged;
+        bool isCopyInProgress;
         private const string IngestFilter = "Ingest Files (*.nef;*.cr2;*.cr3;*.arw;*.dng;*.raf;*.orf;*.rw2;*.pef;*.srw;*.mp4;*.mov;*.avi;*.mxf)|*.nef;*.cr2;*.cr3;*.arw;*.dng;*.raf;*.orf;*.rw2;*.pef;*.srw;*.mp4;*.mov;*.avi;*.mxf";
         private static readonly HashSet<string> RawExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
@@ -33,7 +35,19 @@ namespace CanutePhotoOrg
         {
             ".jpg", ".jpeg", ".png", ".tif", ".tiff"
         };
-        private static readonly string[] RequiredOutputSubfolders = new[] { "RAW", "Edit", "Select" };
+        private static readonly string[] RequiredOutputSubfolders = new[] { "RAW", "Edit", "LRC" };
+
+        private sealed class CopyRequest
+        {
+            public CopyRequest(string outputPath, IReadOnlyList<string> sourceFiles)
+            {
+                OutputPath = outputPath;
+                SourceFiles = sourceFiles;
+            }
+
+            public string OutputPath { get; }
+            public IReadOnlyList<string> SourceFiles { get; }
+        }
 
         private string GetDefaultOutputRoot()
         {
@@ -230,38 +244,38 @@ namespace CanutePhotoOrg
             Settings.Default.Save();
         }
 
-        private string EnsureOutputFolderStructure()
+        private string EnsureOutputFolderStructure(string targetOutputPath)
         {
-            Directory.CreateDirectory(outputPath);
+            Directory.CreateDirectory(targetOutputPath);
 
             foreach (string subfolder in RequiredOutputSubfolders)
             {
-                Directory.CreateDirectory(Path.Combine(outputPath, subfolder));
+                Directory.CreateDirectory(Path.Combine(targetOutputPath, subfolder));
             }
 
             foreach (string subfolder in RequiredOutputSubfolders)
             {
-                string folder = Path.Combine(outputPath, subfolder);
+                string folder = Path.Combine(targetOutputPath, subfolder);
                 if (!Directory.Exists(folder))
                 {
                     throw new IOException("Failed to prepare required output subfolder: " + folder);
                 }
             }
 
-            return Path.Combine(outputPath, "RAW");
+            return Path.Combine(targetOutputPath, "RAW");
         }
 
-        public void CopyFiles()
+        public void CopyFiles(IReadOnlyCollection<string> sourceFiles, string targetOutputPath)
         {
             try
             {
-                string rawFolder = EnsureOutputFolderStructure();
+                string rawFolder = EnsureOutputFolderStructure(targetOutputPath);
                 int copiedCount = 0;
                 int skippedCount = 0;
                 int failedCount = 0;
                 List<string> failedFiles = new List<string>();
 
-                foreach (string sourceFile in source)
+                foreach (string sourceFile in sourceFiles)
                 {
                     string extension = Path.GetExtension(sourceFile);
                     if (string.IsNullOrWhiteSpace(extension))
@@ -277,7 +291,7 @@ namespace CanutePhotoOrg
                     }
                     else if (VideoExtensions.Contains(extension))
                     {
-                        destinationFolder = outputPath;
+                        destinationFolder = targetOutputPath;
                     }
                     else if (ImageExtensions.Contains(extension))
                     {
@@ -312,7 +326,7 @@ namespace CanutePhotoOrg
 
                 try
                 {
-                    Process.Start(Environment.GetEnvironmentVariable("WINDIR") + @"\explorer.exe", outputPath);
+                    Process.Start(Environment.GetEnvironmentVariable("WINDIR") + @"\explorer.exe", targetOutputPath);
                 }
                 catch (Win32Exception win32Exception)
                 {
@@ -436,15 +450,31 @@ namespace CanutePhotoOrg
 
         private void btnGo_Click(object sender, EventArgs e)
         {
+            if (isCopyInProgress)
+            {
+                return;
+            }
+
             if (!TryValidateOutputPath(out string validatedPath))
             {
                 return;
             }
 
+            if (source == null || source.Count == 0)
+            {
+                MessageBox.Show("Please select at least one source file before generating.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
             outputPath = validatedPath;
+            var request = new CopyRequest(validatedPath, source.ToList());
+
+            isCopyInProgress = true;
+            btnGo.Enabled = false;
             worker = new BackgroundWorker();
             worker.DoWork += Worker_DoWork;
-            worker.RunWorkerAsync();            
+            worker.RunWorkerCompleted += Worker_RunWorkerCompleted;
+            worker.RunWorkerAsync(request);            
             
         }
 
@@ -453,9 +483,10 @@ namespace CanutePhotoOrg
             
             try
             {
-                if (outputPath.Length > 0)
+                var request = e.Argument as CopyRequest;
+                if (request != null && !string.IsNullOrWhiteSpace(request.OutputPath))
                 {
-                    CopyFiles();
+                    CopyFiles(request.SourceFiles, request.OutputPath);
                 }
             }
             catch (Exception ex)
@@ -466,6 +497,12 @@ namespace CanutePhotoOrg
             {
                 
             }
+        }
+
+        private void Worker_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
+        {
+            isCopyInProgress = false;
+            btnGo.Enabled = true;
         }
 
         private void txtProject_Leave(object sender, EventArgs e)

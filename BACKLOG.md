@@ -51,7 +51,7 @@
 
 1. Story: Ensure subfolders exist.
 1. Acceptance Criteria:
-1. `RAW`, `Edit`, `Select` are created if missing, even when output root exists.
+1. `RAW`, `Edit`, `LRC` are created if missing, even when output root exists.
 1. Folder creation is idempotent and does not error if folders already exist.
 
 ## Epic 4: Output Path Management
@@ -76,3 +76,13 @@
 1. Acceptance Criteria:
 1. If a file fails to copy, the user is shown the filename and error reason.
 1. The summary includes total files copied, skipped, and failed.
+
+1. Story: Copy execution stability.
+1. Acceptance Criteria:
+1. Copy uses a stable snapshot of selected source files and does not fail from UI-triggered source list changes during execution.
+1. While a copy run is active, the Generate action is disabled or ignored to prevent concurrent runs.
+
+1. Story: Output subfolder naming alignment.
+1. Acceptance Criteria:
+1. Output folder creation and verification use `RAW`, `Edit`, and `LRC`.
+1. References to `Select` as an output subfolder are removed from active specs and task docs.

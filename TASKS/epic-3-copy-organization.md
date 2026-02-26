@@ -14,5 +14,5 @@
 1. Task: Confirm no warnings by default for skipped images.
 
 1. Story: Ensure subfolders exist.
-1. Task: Update folder creation to always ensure `RAW`, `Edit`, `Select` exist.
+1. Task: Update folder creation to always ensure `RAW`, `Edit`, `LRC` exist.
 1. Task: Verify idempotent creation when folders already exist.
