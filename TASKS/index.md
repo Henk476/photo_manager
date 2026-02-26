@@ -10,3 +10,4 @@
   - [Epic 5: Spec Alignment & UX Feedback](./epic-5-spec-alignment-ux-feedback.md)
   - [Epic 6: Copy Performance & Throughput](./epic-6-copy-performance-throughput.md)
   - [Epic 7: Copy Progress Visibility](./epic-7-copy-progress-visibility.md)
+  - [Epic 8: Theme Support & Windows Sync](./epic-8-theme-support-windows-sync.md)

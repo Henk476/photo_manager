@@ -134,3 +134,27 @@
 1. Existing copy rules (routing, skip-on-existing, no-overwrite, error capture) are unchanged.
 1. Progress reporting remains correct under sequential and parallel copy modes.
 1. Automated checks verify progress events and final totals are consistent.
+
+## Epic 8: Theme Support & Windows Sync
+1. Story: Introduce app theme system.
+1. Acceptance Criteria:
+1. The app supports at least `System`, `Light`, and `Dark` theme modes.
+1. Theme application is centralized so all main UI surfaces use consistent colors and control styling.
+
+1. Story: Default to current Windows theme.
+1. Acceptance Criteria:
+1. New installs default to `System` mode.
+1. In `System` mode, app appearance follows the current Windows app theme (light/dark) at startup.
+1. If Windows theme information is unavailable, app falls back safely to `Light`.
+
+1. Story: Add user theme preference.
+1. Acceptance Criteria:
+1. Settings UI includes a theme selector with `System`, `Light`, `Dark`.
+1. Selected theme persists across app restarts.
+1. User-selected `Light` or `Dark` overrides Windows theme while selected.
+
+1. Story: Theme consistency and accessibility.
+1. Acceptance Criteria:
+1. Key controls remain readable and visually consistent in all themes (buttons, inputs, labels, progress/status, dialogs).
+1. Contrast is acceptable for primary text and status indicators.
+1. Theme switch does not break existing workflows or control layout.
