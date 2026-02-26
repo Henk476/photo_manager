@@ -35,6 +35,8 @@ namespace CanutePhotoOrg
             this.btnBrowseOutputRoot = new System.Windows.Forms.Button();
             this.label3 = new System.Windows.Forms.Label();
             this.txtFolderTemplate = new System.Windows.Forms.TextBox();
+            this.label4 = new System.Windows.Forms.Label();
+            this.txtMaxParallelWorkers = new System.Windows.Forms.TextBox();
             this.btnSave = new System.Windows.Forms.Button();
             this.btnCancel = new System.Windows.Forms.Button();
             this.SuspendLayout();
@@ -97,22 +99,38 @@ namespace CanutePhotoOrg
             this.txtFolderTemplate.Size = new System.Drawing.Size(438, 39);
             this.txtFolderTemplate.TabIndex = 6;
             // 
+            // label4
+            // 
+            this.label4.AutoSize = true;
+            this.label4.Location = new System.Drawing.Point(27, 218);
+            this.label4.Name = "label4";
+            this.label4.Size = new System.Drawing.Size(154, 32);
+            this.label4.TabIndex = 7;
+            this.label4.Text = "Max Workers:";
+            // 
+            // txtMaxParallelWorkers
+            // 
+            this.txtMaxParallelWorkers.Location = new System.Drawing.Point(215, 215);
+            this.txtMaxParallelWorkers.Name = "txtMaxParallelWorkers";
+            this.txtMaxParallelWorkers.Size = new System.Drawing.Size(88, 39);
+            this.txtMaxParallelWorkers.TabIndex = 8;
+            // 
             // btnSave
             // 
-            this.btnSave.Location = new System.Drawing.Point(447, 220);
+            this.btnSave.Location = new System.Drawing.Point(447, 282);
             this.btnSave.Name = "btnSave";
             this.btnSave.Size = new System.Drawing.Size(100, 45);
-            this.btnSave.TabIndex = 7;
+            this.btnSave.TabIndex = 9;
             this.btnSave.Text = "Save";
             this.btnSave.UseVisualStyleBackColor = true;
             this.btnSave.Click += new System.EventHandler(this.btnSave_Click);
             // 
             // btnCancel
             // 
-            this.btnCancel.Location = new System.Drawing.Point(553, 220);
+            this.btnCancel.Location = new System.Drawing.Point(553, 282);
             this.btnCancel.Name = "btnCancel";
             this.btnCancel.Size = new System.Drawing.Size(100, 45);
-            this.btnCancel.TabIndex = 8;
+            this.btnCancel.TabIndex = 10;
             this.btnCancel.Text = "Cancel";
             this.btnCancel.UseVisualStyleBackColor = true;
             this.btnCancel.Click += new System.EventHandler(this.btnCancel_Click);
@@ -122,7 +140,9 @@ namespace CanutePhotoOrg
             this.AcceptButton = this.btnSave;
             this.AutoScaleDimensions = new System.Drawing.SizeF(10F, 24F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(690, 288);
+            this.ClientSize = new System.Drawing.Size(690, 351);
+            this.Controls.Add(this.txtMaxParallelWorkers);
+            this.Controls.Add(this.label4);
             this.Controls.Add(this.btnCancel);
             this.Controls.Add(this.btnSave);
             this.Controls.Add(this.txtFolderTemplate);
@@ -152,6 +172,8 @@ namespace CanutePhotoOrg
         private System.Windows.Forms.Button btnBrowseOutputRoot;
         private System.Windows.Forms.Label label3;
         private System.Windows.Forms.TextBox txtFolderTemplate;
+        private System.Windows.Forms.Label label4;
+        private System.Windows.Forms.TextBox txtMaxParallelWorkers;
         private System.Windows.Forms.Button btnSave;
         private System.Windows.Forms.Button btnCancel;
     }

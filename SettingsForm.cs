@@ -18,6 +18,7 @@ namespace CanutePhotoOrg
             txtDefaultInputDrive.Text = Settings.Default.DefaultInputDrive;
             txtDefaultOutputRoot.Text = Settings.Default.DefaultOutputRoot;
             txtFolderTemplate.Text = Settings.Default.FolderTemplate;
+            txtMaxParallelWorkers.Text = Settings.Default.MaxParallelCopyWorkers.ToString();
         }
 
         private void btnBrowseOutputRoot_Click(object sender, EventArgs e)
@@ -37,6 +38,7 @@ namespace CanutePhotoOrg
             string inputDrive = txtDefaultInputDrive.Text.Trim();
             string outputRoot = txtDefaultOutputRoot.Text.Trim();
             string template = txtFolderTemplate.Text.Trim();
+            string maxWorkersText = txtMaxParallelWorkers.Text.Trim();
 
             if (string.IsNullOrWhiteSpace(outputRoot))
             {
@@ -64,9 +66,16 @@ namespace CanutePhotoOrg
                 return;
             }
 
+            if (!int.TryParse(maxWorkersText, out int maxWorkers) || maxWorkers < 1 || maxWorkers > 16)
+            {
+                MessageBox.Show("Max parallel workers must be a whole number between 1 and 16.", "Settings", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
             Settings.Default.DefaultInputDrive = inputDrive;
             Settings.Default.DefaultOutputRoot = outputRoot;
             Settings.Default.FolderTemplate = template;
+            Settings.Default.MaxParallelCopyWorkers = maxWorkers;
             Settings.Default.Save();
 
             DialogResult = DialogResult.OK;

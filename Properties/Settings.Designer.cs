@@ -82,5 +82,17 @@ namespace CanutePhotoOrg.Properties {
                 this["LastUsedRemovableDrive"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("2")]
+        public int MaxParallelCopyWorkers {
+            get {
+                return ((int)(this["MaxParallelCopyWorkers"]));
+            }
+            set {
+                this["MaxParallelCopyWorkers"] = value;
+            }
+        }
     }
 }

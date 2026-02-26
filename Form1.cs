@@ -5,6 +5,8 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using CanutePhotoOrg.Properties;
 
@@ -70,6 +72,7 @@ namespace CanutePhotoOrg
             public int FailedCount { get; set; }
             public List<string> FailedFiles { get; set; }
             public TimeSpan Elapsed { get; set; }
+            public int MaxParallelWorkers { get; set; }
         }
 
         private string GetDefaultOutputRoot()
@@ -315,6 +318,7 @@ namespace CanutePhotoOrg
             summary.AppendLine("Copied: " + result.CopiedCount);
             summary.AppendLine("Skipped: " + result.SkippedCount);
             summary.AppendLine("Failed: " + result.FailedCount);
+            summary.AppendLine("Workers: " + result.MaxParallelWorkers);
             summary.AppendLine("Elapsed: " + FormatDuration(result.Elapsed));
 
             if (result.Elapsed.TotalSeconds > 0)
@@ -336,16 +340,31 @@ namespace CanutePhotoOrg
             return summary.ToString();
         }
 
+        private int GetMaxParallelCopyWorkers()
+        {
+            int configured = Settings.Default.MaxParallelCopyWorkers;
+            if (configured < 1)
+            {
+                configured = 2;
+            }
+
+            return Math.Min(configured, 16);
+        }
+
         private CopyResult CopyFiles(IReadOnlyCollection<string> sourceFiles, string targetOutputPath, Action<CopyProgressState> reportProgress)
         {
             string rawFolder = EnsureOutputFolderStructure(targetOutputPath);
+            int maxWorkers = GetMaxParallelCopyWorkers();
             int copiedCount = 0;
             int skippedCount = 0;
             int failedCount = 0;
             int processedCount = 0;
             int totalFiles = sourceFiles.Count;
             List<string> failedFiles = new List<string>();
+            object failedFilesLock = new object();
             var stopwatch = Stopwatch.StartNew();
+
+            Debug.WriteLine("Copy preflight complete. Total files: " + totalFiles + ". Workers: " + maxWorkers);
 
             reportProgress?.Invoke(new CopyProgressState
             {
@@ -359,68 +378,84 @@ namespace CanutePhotoOrg
                 EstimatedRemaining = null
             });
 
-            foreach (string sourceFile in sourceFiles)
+            var parallelOptions = new ParallelOptions
+            {
+                MaxDegreeOfParallelism = maxWorkers
+            };
+
+            Parallel.ForEach(sourceFiles, parallelOptions, sourceFile =>
             {
                 string fileName = Path.GetFileName(sourceFile);
-                string extension = Path.GetExtension(sourceFile);
-
-                if (string.IsNullOrWhiteSpace(extension))
-                {
-                    skippedCount++;
-                    processedCount++;
-                    ReportProgressSnapshot(fileName);
-                    continue;
-                }
-
-                string destinationFolder = null;
-                if (RawExtensions.Contains(extension))
-                {
-                    destinationFolder = rawFolder;
-                }
-                else if (VideoExtensions.Contains(extension))
-                {
-                    destinationFolder = targetOutputPath;
-                }
-                else if (ImageExtensions.Contains(extension))
-                {
-                    skippedCount++;
-                    processedCount++;
-                    ReportProgressSnapshot(fileName);
-                    continue;
-                }
-                else
-                {
-                    skippedCount++;
-                    processedCount++;
-                    ReportProgressSnapshot(fileName);
-                    continue;
-                }
-
-                string destFile = Path.Combine(destinationFolder, fileName);
-                if (File.Exists(destFile))
-                {
-                    skippedCount++;
-                    processedCount++;
-                    ReportProgressSnapshot(fileName);
-                    continue;
-                }
 
                 try
                 {
-                    File.Copy(sourceFile, destFile, false);
-                    copiedCount++;
-                }
-                catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException || ex is NotSupportedException)
-                {
-                    failedCount++;
-                    failedFiles.Add(fileName + " - " + ex.Message);
-                }
+                    string extension = Path.GetExtension(sourceFile);
+                    if (string.IsNullOrWhiteSpace(extension))
+                    {
+                        Interlocked.Increment(ref skippedCount);
+                        return;
+                    }
 
-                processedCount++;
-                ReportProgressSnapshot(fileName);
-            }
+                    string destinationFolder = null;
+                    if (RawExtensions.Contains(extension))
+                    {
+                        destinationFolder = rawFolder;
+                    }
+                    else if (VideoExtensions.Contains(extension))
+                    {
+                        destinationFolder = targetOutputPath;
+                    }
+                    else
+                    {
+                        Interlocked.Increment(ref skippedCount);
+                        return;
+                    }
+
+                    string destFile = Path.Combine(destinationFolder, fileName);
+                    if (File.Exists(destFile))
+                    {
+                        Interlocked.Increment(ref skippedCount);
+                        return;
+                    }
+
+                    try
+                    {
+                        File.Copy(sourceFile, destFile, false);
+                        Interlocked.Increment(ref copiedCount);
+                    }
+                    catch (IOException ioex)
+                    {
+                        if (File.Exists(destFile))
+                        {
+                            Interlocked.Increment(ref skippedCount);
+                        }
+                        else
+                        {
+                            Interlocked.Increment(ref failedCount);
+                            lock (failedFilesLock)
+                            {
+                                failedFiles.Add(fileName + " - " + ioex.Message);
+                            }
+                        }
+                    }
+                    catch (Exception ex) when (ex is UnauthorizedAccessException || ex is NotSupportedException)
+                    {
+                        Interlocked.Increment(ref failedCount);
+                        lock (failedFilesLock)
+                        {
+                            failedFiles.Add(fileName + " - " + ex.Message);
+                        }
+                    }
+                }
+                finally
+                {
+                    Interlocked.Increment(ref processedCount);
+                    ReportProgressSnapshot(fileName);
+                }
+            });
 
             stopwatch.Stop();
+            Debug.WriteLine("Copy processing complete. Elapsed: " + stopwatch.Elapsed);
             return new CopyResult
             {
                 OutputPath = targetOutputPath,
@@ -429,24 +464,30 @@ namespace CanutePhotoOrg
                 SkippedCount = skippedCount,
                 FailedCount = failedCount,
                 FailedFiles = failedFiles,
-                Elapsed = stopwatch.Elapsed
+                Elapsed = stopwatch.Elapsed,
+                MaxParallelWorkers = maxWorkers
             };
 
             void ReportProgressSnapshot(string currentFileName)
             {
-                double avgTicksPerFile = processedCount > 0 ? (double)stopwatch.ElapsedTicks / processedCount : 0;
-                int remainingFiles = Math.Max(0, totalFiles - processedCount);
-                TimeSpan? eta = processedCount >= 3
+                int processedSnapshot = Volatile.Read(ref processedCount);
+                int copiedSnapshot = Volatile.Read(ref copiedCount);
+                int skippedSnapshot = Volatile.Read(ref skippedCount);
+                int failedSnapshot = Volatile.Read(ref failedCount);
+
+                double avgTicksPerFile = processedSnapshot > 0 ? (double)stopwatch.ElapsedTicks / processedSnapshot : 0;
+                int remainingFiles = Math.Max(0, totalFiles - processedSnapshot);
+                TimeSpan? eta = processedSnapshot >= 3
                     ? TimeSpan.FromTicks((long)(avgTicksPerFile * remainingFiles))
                     : (TimeSpan?)null;
 
                 reportProgress?.Invoke(new CopyProgressState
                 {
                     TotalFiles = totalFiles,
-                    ProcessedFiles = processedCount,
-                    CopiedFiles = copiedCount,
-                    SkippedFiles = skippedCount,
-                    FailedFiles = failedCount,
+                    ProcessedFiles = processedSnapshot,
+                    CopiedFiles = copiedSnapshot,
+                    SkippedFiles = skippedSnapshot,
+                    FailedFiles = failedSnapshot,
                     CurrentFileName = currentFileName,
                     Elapsed = stopwatch.Elapsed,
                     EstimatedRemaining = eta
